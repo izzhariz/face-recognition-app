@@ -1,6 +1,5 @@
 import React, { Component } from 'react'
 import Particles from 'react-particles-js';
-import Clarifai from 'clarifai'
 import FaceRecognition from './components/FaceRecognition/FaceRecognition'
 import Navigation from './components/Navigation/Navigation'
 import Signin from './components/Signin/Signin'
@@ -10,10 +9,20 @@ import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm'
 import Rank from './components/Rank/Rank'
 import './App.css';
 
-
-const app = new Clarifai.App({
-  apiKey: '4f65e4f902f64fff856ee0036f06926a'
-})
+const initialState = {
+  input: '',
+  imageUrl: '',
+  box: {},
+  route: 'signin',
+  isSignedIn: false,
+  user: {
+    id: '',
+    name: '',
+    email: '',
+    entries: 0,
+    joined: ''
+  }
+}
 
 const particlesOptions = {
   particles: {
@@ -30,21 +39,8 @@ const particlesOptions = {
 class App extends Component {
   constructor() {
     super();
-    this.state = {
-      input: '',
-      imageUrl: '',
-      box: {},
-      route: 'signin',
-      isSignedIn: false,
-      user: {
-        id: '',
-        name: '',
-        email: '',
-        entries: 0,
-        joined: ''
-      }
+    this.state = initialState
     }
-  }
 
   loadUser = (data) => {
     this.setState({user: {
@@ -54,12 +50,6 @@ class App extends Component {
       entries: data.entries,
       joined: data.joined
     }})
-  }
-
-  componentDidMount() {
-    fetch('http://localhost:3000')
-      .then(response => response.json())
-      .then(console.log)
   }
 
   calculateFaceLocation = (data) => {
@@ -85,8 +75,14 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input})
-    app.models
-    .predict(Clarifai.FACE_DETECT_MODEL, this.state.input)
+    fetch('http://localhost:3000/imageurl', {
+      method: 'post',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+          input: this.state.input
+      }) 
+    })
+    .then(response => response.json())
     .then(response => {
       if(response) {
         fetch('http://localhost:3000/image', {
@@ -100,15 +96,16 @@ class App extends Component {
         .then(count => {
           this.setState(Object.assign(this.state.user, ({entries: count})))
         })
-      this.displayFaceBox(this.calculateFaceLocation(response))
+        .catch(console.log)
       }
+      this.displayFaceBox(this.calculateFaceLocation(response))
     })
-    .catch(error => console.log(error));
+    .catch(err => console.log(err));
   }
 
   onRouteChange = (route) => {
     if(route === 'signout'){
-      this.setState({isSignedIn: false})
+      this.setState(initialState)
     } else if (route === 'home') {
       this.setState({isSignedIn: true})
     }
